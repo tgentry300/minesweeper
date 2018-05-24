@@ -1,0 +1,20 @@
+.cell {
+    display: flex;
+    border: solid black 2px;
+    height: 40px;
+    width: 40px;
+    justify-content: center;
+    /* align-items: center; */
+}
+main {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 50px;
+}
+
+.bombpic{
+    width: 30px;
+    height: 30px;
+    position: absolute;
+}
