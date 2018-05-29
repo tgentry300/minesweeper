@@ -16,27 +16,79 @@ const GameBoard = function (config) {
     this.assignEventListeners()
     this.drawBoard()
     this.drawMines()
+    this.setNumbersToCell()
 }
 
 GameBoard.prototype = {
+
+
+
+    floodFill: function (cell) {
+        const queue = []
+        queue.push(cell)
+        cell.hasBeenQueued = true
+
+        while (queue.length) {
+            const currentCell = queue.shift()
+            const neighborCells = this.findNeighboringCellElements(currentCell)
+
+            for (let neighborCell of neighborCells) {
+                if (currentCell.dataset.numberofbombstouching > 0) continue
+                if (neighborCell.hasBeenRevealed || neighborCell.dataset.bombstatus === "BOMB") {
+                    // console.log("hasbeenrevealed:", neighborCell.hasBeenRevealed, "/ bombstatus:", neighborCell.dataset.bombstatus)
+                    continue
+                }
+
+                // reveal neighbor cell
+                neighborCell.style.backgroundColor = "white"
+                neighborCell.hasBeenRevealed = true
+
+                if (Number(neighborCell.dataset.numberofbombstouching)) {
+                    neighborCell.innerText = neighborCell.dataset.numberofbombstouching
+                }
+
+                // console.log(neighborCell.hasBeenQueued)
+                if (!neighborCell.hasBeenQueued) {
+                    queue.push(neighborCell);
+                    neighborCell.hasBeenQueued = true;
+
+                }
+
+
+            }
+        }
+    },
 
     eventListeners: {
 
         click: function (event) {
             if (!event.target.classList.contains("cell")) return;
 
-            if (event.target.childElementCount) {
+            const isABomb = event.target.dataset.bombstatus === "BOMB"
+            if (isABomb) {
                 event.target.firstChild.style.visibility = "visible"
+                this.removeEventListeners()
+                alert("You Lose!")
+
             } else {
-                //PUT THINGS HERE
-                event.target.style.backgroundColor = "lightsalmon"
+                event.target.style.backgroundColor = "white"
+                event.target.hasBeenRevealed = true
+            }
+
+            if (event.target.dataset.numberofbombstouching === "0") {
+                this.floodFill(event.target);
+            } else {
+                event.target.innerText = event.target.dataset.numberofbombstouching
             }
         },
         contextClick: function (event) {
+            event.preventDefault()
             if (!event.target.classList.contains("cell")) return;
+            event.target.classList.toggle("noflag")
+            event.target.classList.toggle("flag")
 
-            // ... do the flag shit
         },
+
 
     },
 
@@ -44,8 +96,8 @@ GameBoard.prototype = {
         return Array(this.numberOfRows).fill('0').map(() => new Array(this.numberOfColumns).fill('0'))
     },
 
+
     drawBoard: function () {
-        // console.log(this.gameGridArray())
         for (let colIndex in this.createGameGridArray()) {
             this.gameGridElementsArray.push([])
             const colElement = document.createElement("div")
@@ -57,19 +109,21 @@ GameBoard.prototype = {
                 cellElement.dataset.columns = colIndex
                 cellElement.dataset.cells = cellIndex
                 cellElement.dataset.bombstatus = "no bomb"
+                cellElement.classList.add("noflag")
+                cellElement.dataset.numberofbombstouching = Number(0)
                 colElement.appendChild(cellElement)
                 this.gameGridElementsArray[colIndex].push(cellElement)
             }
         }
     },
 
+    getRandomIntCol: function () {
+        return Math.floor(Math.random() * Math.floor(this.numberOfColumns - 1));
+    },
     getRandomIntCell: function () {
         return Math.floor(Math.random() * Math.floor(this.numberOfRows - 1));
     },
 
-    getRandomIntCol: function () {
-        return Math.floor(Math.random() * Math.floor(this.numberOfColumns - 1));
-    },
 
     drawMines: function () {
         for (let i = 0; i < this.numberOfMines; i++) {
@@ -86,13 +140,70 @@ GameBoard.prototype = {
                 bombPic.classList.add("bombpic")
 
                 this.gameGridElementsArray[colIndex][cellIndex].appendChild(bombPic)
+                // console.log(this.gameGridElementsArray)
             }
         }
     },
+    findCellbyCoordinates: function (colposition, cellposition) {
+        const column = this.gameGridElementsArray[colposition]
+        return column && column[cellposition]
+    },
+
+    incrementBombsTouching: function (cell) {
+
+        if (cell && cell.dataset.bombstatus == "no bomb") {
+            cell.dataset.numberofbombstouching = Number(cell.dataset.numberofbombstouching) + 1;
+        }
+        return cell
+    },
+    setNumbersToCell: function () {
+        let gameArray = this.gameGridElementsArray
+        gameArray.forEach((element, col) => {
+            element.forEach((element, cell) => {
+                if (element.dataset.bombstatus === "BOMB") {
+                    this.findNeighboringCellElements(element).forEach(neighborCellElement => {
+                        this.incrementBombsTouching(neighborCellElement)
+
+                    });
+                }
+            });
+        });
+    },
+
+    findNeighboringCellElements: function (cellElement) {
+        const col = Number(cellElement.dataset.columns)
+        const cell = Number(cellElement.dataset.cells)
+        const arrayOfCells = []
+        const neighborCoords = {
+            cellAbove: [col, cell - 1],
+            cellRight: [col + 1, cell],
+            cellDown: [col, cell + 1],
+            cellLeft: [col - 1, cell],
+            cellAboveRight: [col + 1, cell - 1],
+            cellAboveLeft: [col - 1, cell - 1],
+            cellDownRight: [col + 1, cell + 1],
+            cellDownLeft: [col - 1, cell + 1],
+        }
+        Object.values(neighborCoords).forEach(coords => {
+            const cell = this.findCellbyCoordinates(coords[0], coords[1])
+            if (cell) arrayOfCells.push(cell)
+        });
+
+        return arrayOfCells
+        // console.log(arrayOfCells)
+    },
 
     assignEventListeners: function () {
-        this.main.addEventListener("click", this.eventListeners.click)
-        this.main.addEventListener("contextmenu", this.eventListeners.contextClick)
+        this._boundClickListener = this.eventListeners.click.bind(this)
+        this._boundContextMenuListener = this.eventListeners.contextClick.bind(this)
+
+        this.main.addEventListener("click", this._boundClickListener)
+        this.main.addEventListener("contextmenu", this._boundContextMenuListener)
+    },
+
+    removeEventListeners: function () {
+        this.main.removeEventListener("click", this._boundClickListener)
+        this.main.removeEventListener("contextmenu", this._boundContextMenuListener)
     },
 
 }

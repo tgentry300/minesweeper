@@ -4,6 +4,7 @@
     height: 40px;
     width: 40px;
     justify-content: center;
+    background-color: blue;
     /* align-items: center; */
 }
 main {
@@ -19,4 +20,8 @@ main {
     position: absolute;
     visibility: hidden;
     pointer-events: none;
+}
+.flag{
+    content: url(flag.png);
+    /* background-repeat: no-repeat; */
 }
