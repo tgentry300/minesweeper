@@ -28,26 +28,27 @@ GameBoard.prototype = {
         queue.push(cell)
         cell.hasBeenQueued = true
 
+
         while (queue.length) {
             const currentCell = queue.shift()
             const neighborCells = this.findNeighboringCellElements(currentCell)
 
+            if(currentCell.dataset.bombstatus == "BOMB") break
+
             for (let neighborCell of neighborCells) {
                 if (currentCell.dataset.numberofbombstouching > 0) continue
                 if (neighborCell.hasBeenRevealed || neighborCell.dataset.bombstatus === "BOMB") {
-                    // console.log("hasbeenrevealed:", neighborCell.hasBeenRevealed, "/ bombstatus:", neighborCell.dataset.bombstatus)
                     continue
                 }
 
-                // reveal neighbor cell
                 neighborCell.style.backgroundColor = "white"
+                neighborCell.dataset.clickstatus = "clicked"
                 neighborCell.hasBeenRevealed = true
 
                 if (Number(neighborCell.dataset.numberofbombstouching)) {
                     neighborCell.innerText = neighborCell.dataset.numberofbombstouching
                 }
 
-                // console.log(neighborCell.hasBeenQueued)
                 if (!neighborCell.hasBeenQueued) {
                     queue.push(neighborCell);
                     neighborCell.hasBeenQueued = true;
@@ -62,16 +63,27 @@ GameBoard.prototype = {
     eventListeners: {
 
         click: function (event) {
-            if (!event.target.classList.contains("cell")) return;
+            let popup = document.createElement("div")
+            let bunchOfCells = document.getElementsByClassName("cell")
+            
+            
 
+            if (!event.target.classList.contains("cell")) return;
             const isABomb = event.target.dataset.bombstatus === "BOMB"
             if (isABomb) {
                 event.target.firstChild.style.visibility = "visible"
                 this.removeEventListeners()
-                alert("You Lose!")
-
+                popup.innerText = "You Lose"
+                main.appendChild(popup)
+                for (cell of bunchOfCells) {
+                    if (cell.dataset.bombstatus == "BOMB") {
+                        cell.firstChild.style.visibility = "visible"
+                    }
+                }
+                
             } else {
                 event.target.style.backgroundColor = "white"
+                event.target.dataset.clickstatus = "clicked"
                 event.target.hasBeenRevealed = true
             }
 
@@ -80,6 +92,8 @@ GameBoard.prototype = {
             } else {
                 event.target.innerText = event.target.dataset.numberofbombstouching
             }
+            
+            this.checkWin()
         },
         contextClick: function (event) {
             event.preventDefault()
@@ -110,6 +124,7 @@ GameBoard.prototype = {
                 cellElement.dataset.cells = cellIndex
                 cellElement.dataset.bombstatus = "no bomb"
                 cellElement.classList.add("noflag")
+                cellElement.dataset.clickstatus = "unclicked"
                 cellElement.dataset.numberofbombstouching = Number(0)
                 colElement.appendChild(cellElement)
                 this.gameGridElementsArray[colIndex].push(cellElement)
@@ -140,7 +155,6 @@ GameBoard.prototype = {
                 bombPic.classList.add("bombpic")
 
                 this.gameGridElementsArray[colIndex][cellIndex].appendChild(bombPic)
-                // console.log(this.gameGridElementsArray)
             }
         }
     },
@@ -190,7 +204,6 @@ GameBoard.prototype = {
         });
 
         return arrayOfCells
-        // console.log(arrayOfCells)
     },
 
     assignEventListeners: function () {
@@ -206,6 +219,31 @@ GameBoard.prototype = {
         this.main.removeEventListener("contextmenu", this._boundContextMenuListener)
     },
 
+
+
+
+    checkWin: function () {
+        let popup = document.createElement("div")
+        let clickCount = 0
+        let countOfClickedCells = document.querySelectorAll("[data-clickstatus='clicked']").length
+        const numberOfCells = this.numberOfRows * this.numberOfColumns
+        const endResult = numberOfCells - this.numberOfMines
+        if(countOfClickedCells === endResult){
+             popup.innerText = "WINNNNNNNNNNNERRRRRRRRR"
+             this.main.appendChild(popup)
+             this.removeEventListeners()
+        }
+    },
+
 }
+
+resetGame = () => {
+    main.innerHTML = ''
+    main.secondChild = ''
+    new GameBoard(config)
+
+}
+document.getElementById("reset").addEventListener("click", resetGame)
+
 
 const gameBoard = new GameBoard(config)
